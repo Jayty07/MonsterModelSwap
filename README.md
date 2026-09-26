@@ -62,6 +62,26 @@ chara->GameObject.EnableDraw();                                    // game rebui
 After a redraw the actor is left alone for ~20 frames so the game can finish rebuilding the draw object;
 actors with a null `DrawObject` (mid-spawn) are skipped and picked up on a later frame.
 
+## Install
+
+The plugin is not in the official Dalamud repository, so it is loaded as a **dev plugin**.
+
+1. Get a build:
+   - download `MonsterModelSwap-plugin.zip` from the latest GitHub Actions run / release, **or**
+   - build it yourself (see [Building](#building)); the output is `MonsterModelSwap/bin/Release/`.
+2. Extract/copy the folder somewhere permanent, e.g.
+   `%AppData%\XIVLauncher\devPlugins\MonsterModelSwap\`. It must contain
+   `MonsterModelSwap.dll`, `MonsterModelSwap.json` and the `Data\models.json` file side by side.
+3. Launch the game through XIVLauncher, then in game type `/xlsettings`.
+4. **Experimental** tab → *Dev Plugin Locations* → click **+**, paste the full path to
+   `MonsterModelSwap.dll` (or the folder), tick **Enabled**, then **Save and Close**.
+5. Open `/xlplugins` → **Dev Tools** / *Installed Plugins* → enable **Monster Model Swap**
+   (if it does not appear, click *Scan Dev Plugins* or restart the game).
+6. Type `/mms` to open the window, pick a model, press **Apply**.
+
+To update, replace the files in the same folder and reload the plugin from `/xlplugins`.
+To uninstall, disable it in `/xlplugins` and remove the dev plugin location again.
+
 ## Building
 
 Requires the .NET 10 SDK and a Dalamud dev install (the `Dalamud.NET.Sdk` looks in
