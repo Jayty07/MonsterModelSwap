@@ -63,7 +63,7 @@ public sealed unsafe class ModelSwapService : IDisposable
         clientState.TerritoryChanged -= OnTerritoryChanged;
         clientState.Login -= OnLogin;
         condition.ConditionChange -= OnConditionChange;
-        camera.Reset();
+        camera.Dispose();
     }
 
     /// <summary>True while a swap is in effect and the persistence loop should run.</summary>

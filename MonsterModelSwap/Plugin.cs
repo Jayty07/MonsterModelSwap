@@ -16,6 +16,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
+    [PluginService] internal static IGameInteropProvider GameInterop { get; private set; } = null!;
     [PluginService] internal static IClientState ClientState { get; private set; } = null!;
     [PluginService] internal static ICondition Condition { get; private set; } = null!;
     [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null!;
@@ -32,7 +33,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         database = new ModelDatabase(PluginInterface, DataManager, Log);
-        swap = new ModelSwapService(Framework, ClientState, Condition, ObjectTable, Log, config, new CameraScaleService(Log));
+        swap = new ModelSwapService(Framework, ClientState, Condition, ObjectTable, Log, config, new CameraScaleService(Log, ObjectTable, GameInterop));
         mainWindow = new MainWindow(PluginInterface, config, database, swap);
         windowSystem.AddWindow(mainWindow);
 
