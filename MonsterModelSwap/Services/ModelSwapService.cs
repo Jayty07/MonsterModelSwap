@@ -80,6 +80,8 @@ public sealed unsafe class ModelSwapService : IDisposable
     /// <summary>Snapshot of the actor before the very first apply; used for a clean revert.</summary>
     public int? OriginalModelId { get; private set; }
     public float? OriginalHeight { get; private set; }
+    public float? OriginalObjectScale { get; private set; }
+    private bool reverting;
 
     public int ReapplyCount { get; private set; }
     public DateTime? LastReapply { get; private set; }
@@ -117,6 +119,7 @@ public sealed unsafe class ModelSwapService : IDisposable
         {
             OriginalModelId = chara->ModelContainer.ModelCharaId;
             OriginalHeight = chara->ModelScale;
+            OriginalObjectScale = chara->GameObject.Scale;
             log.Information("Stored original model #{Model} scale {Scale}", OriginalModelId, OriginalHeight);
         }
 
@@ -140,6 +143,7 @@ public sealed unsafe class ModelSwapService : IDisposable
             if (chara is null) return;
             OriginalModelId ??= chara->ModelContainer.ModelCharaId;
             OriginalHeight ??= chara->ModelScale;
+            OriginalObjectScale ??= chara->GameObject.Scale;
             TargetModelId = chara->ModelContainer.ModelCharaId;
             Active = true;
         }
@@ -155,13 +159,16 @@ public sealed unsafe class ModelSwapService : IDisposable
 
         TargetModelId = model;
         TargetHeight = height;
+        reverting = true;
         ReapplyAll("revert", force: true);
+        reverting = false;
 
         camera.Reset();
         Active = false;
         pendingReapply = false;
         OriginalModelId = null;
         OriginalHeight = null;
+        OriginalObjectScale = null;
         redrawCooldown.Clear();
     }
 
@@ -258,7 +265,12 @@ public sealed unsafe class ModelSwapService : IDisposable
             if (chara->GameObject.DrawObject is null) continue;
             inspected = true;
 
-            if (!force && redrawCooldown.ContainsKey(pc.Address)) continue;
+            if (!force && redrawCooldown.ContainsKey(pc.Address))
+            {
+                // Still rebuilding after a redraw: don't touch the model, but keep the scale pinned.
+                EnforceScale(chara);
+                continue;
+            }
 
             ApplyTo(chara, pc, reason, force);
         }
@@ -283,11 +295,7 @@ public sealed unsafe class ModelSwapService : IDisposable
             scaleChanged = true;
         }
 
-        var draw = chara->GameObject.DrawObject;
-        // The game may rebuild the draw object's transform from ModelScale on its own schedule; keep the
-        // visible scale in sync silently so a slider drag shows up immediately without a redraw.
-        if (draw is not null && Math.Abs(draw->Object.Scale.X - TargetHeight) > 0.0005f)
-            draw->Object.Scale = new Vector3(TargetHeight);
+        EnforceScale(chara);
 
         if (modelChanged)
         {
@@ -311,6 +319,28 @@ public sealed unsafe class ModelSwapService : IDisposable
             }
         }
     }
+
+    /// <summary>
+    /// Pins every scale the game reads when building the actor's transform. Cutscenes and gpose rebuild
+    /// the transform from <c>GameObject.Scale</c> each frame (ignoring ModelScale), so all three are
+    /// written every tick; the writes are cheap and skipped when already equal.
+    /// </summary>
+    private void EnforceScale(Character* chara)
+    {
+        var objScale = TargetObjectScale;
+
+        if (Math.Abs(chara->GameObject.Scale - objScale) > 0.0005f)
+            chara->GameObject.Scale = objScale;
+
+        var draw = chara->GameObject.DrawObject;
+        if (draw is not null && Math.Abs(draw->Object.Scale.X - objScale) > 0.0005f)
+            draw->Object.Scale = new Vector3(objScale);
+    }
+
+    /// <summary>GameObject.Scale to enforce: the original object scale times the height factor.</summary>
+    private float TargetObjectScale => reverting
+        ? OriginalObjectScale ?? 1f
+        : (OriginalObjectScale ?? 1f) * TargetHeight / (OriginalHeight ?? 1f);
 
     private static bool IsLocalPlayerCopy(IPlayerCharacter pc, IPlayerCharacter local, string localName, uint localWorld)
     {
