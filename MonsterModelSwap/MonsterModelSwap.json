@@ -1,0 +1,11 @@
+{
+  "Author": "Jayty07",
+  "Name": "Monster Model Swap",
+  "Punchline": "Wear a monster's model (skeleton and animations included) and keep it through zoning and cutscenes.",
+  "Description": "Swaps the local player's ModelChara to any monster/NPC model at the actor level and re-applies it whenever the game recreates the player actor (zoning, cutscenes, gpose). Client-side only.",
+  "InternalName": "MonsterModelSwap",
+  "ApplicableVersion": "any",
+  "Tags": [ "model", "monster", "appearance", "glamour", "anamnesis" ],
+  "RepoUrl": "https://github.com/Jayty07/MonsterModelSwap",
+  "IconUrl": ""
+}
