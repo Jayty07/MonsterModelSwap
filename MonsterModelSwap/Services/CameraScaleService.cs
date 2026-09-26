@@ -32,6 +32,10 @@ public sealed unsafe class CameraScaleService : IDisposable
     private bool engaged;
     private float factor = 1f;
     private float appliedFactor = 1f;
+    private float appliedMaxFactor = 1f;
+
+    /// <summary>Max zoom-out is never scaled below this multiple of the game's normal max distance.</summary>
+    public float MaxZoomFloor { get; set; } = 1f;
     private float baselineMin;
     private float baselineMax;
 
@@ -71,14 +75,16 @@ public sealed unsafe class CameraScaleService : IDisposable
 
         factor = newFactor;
 
-        if (Math.Abs(factor - appliedFactor) > 0.0005f)
+        var maxFactor = Math.Max(factor, MaxZoomFloor);
+        if (Math.Abs(factor - appliedFactor) > 0.0005f || Math.Abs(maxFactor - appliedMaxFactor) > 0.0005f)
         {
             var ratio = factor / appliedFactor;
             cam->MinDistance = baselineMin * factor;
-            cam->MaxDistance = baselineMax * factor;
+            cam->MaxDistance = baselineMax * maxFactor;
             cam->Distance = Math.Clamp(cam->Distance * ratio, cam->MinDistance, cam->MaxDistance);
             cam->InterpDistance = cam->Distance;
             appliedFactor = factor;
+            appliedMaxFactor = maxFactor;
         }
     }
 
@@ -97,6 +103,7 @@ public sealed unsafe class CameraScaleService : IDisposable
         cam->Distance = Math.Clamp(cam->Distance / appliedFactor, baselineMin, baselineMax);
         cam->InterpDistance = cam->Distance;
         appliedFactor = 1f;
+        appliedMaxFactor = 1f;
         log.Debug("Camera scaling reset");
     }
 
@@ -160,7 +167,7 @@ public sealed unsafe class CameraScaleService : IDisposable
     {
         var cam = GetWorldCamera();
         return $"hook={(getCameraPositionHook is null ? "none" : getCameraPositionHook.IsEnabled ? "enabled" : "disabled")} " +
-               $"calls={hookCalls} engaged={engaged} factor={factor:0.###} extra={ExtraHeight:0.###} " +
+               $"calls={hookCalls} engaged={engaged} factor={factor:0.###} extra={ExtraHeight:0.###} zoomFloor={MaxZoomFloor:0.###} " +
                $"pivotAboveFeet={lastPivotAboveFeet:0.###} field0x234={lastFieldOffset:0.###} " +
                $"dist={(cam is null ? -1 : cam->Distance):0.##} min={(cam is null ? -1 : cam->MinDistance):0.##} max={(cam is null ? -1 : cam->MaxDistance):0.##}";
     }

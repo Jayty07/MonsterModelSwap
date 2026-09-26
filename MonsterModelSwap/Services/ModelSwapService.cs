@@ -212,6 +212,7 @@ public sealed unsafe class ModelSwapService : IDisposable
         TickCooldowns();
 
         camera.ExtraHeight = config.CameraHeightOffset;
+        camera.MaxZoomFloor = config.CameraMaxZoomFloor;
         camera.Tick();
 
         if (!Active) return;

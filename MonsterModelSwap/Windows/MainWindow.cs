@@ -134,6 +134,16 @@ public sealed class MainWindow : Window
         }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Reset camera height offset");
 
+        ImGui.SetNextItemWidth(260);
+        var zoomFloor = config.CameraMaxZoomFloor;
+        if (ImGui.SliderFloat("Min zoom-out range", ref zoomFloor, 0.1f, 5f, "x%.2f"))
+        {
+            config.CameraMaxZoomFloor = Math.Clamp(zoomFloor, 0.1f, 5f);
+            pi.SavePluginConfig(config);
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Max zoom-out distance never shrinks below this multiple of the game's normal max,\neven when Height is set very low. x1.00 = always at least the normal zoom range.");
+
         ImGui.BeginDisabled(config.SelectedModelId <= 0);
         if (ImGui.Button("Apply", new Vector2(100, 0)))
             swap.Apply(config.SelectedModelId, config.Height);

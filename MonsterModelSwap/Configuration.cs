@@ -20,6 +20,9 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Extra camera pivot height in world units, added on top of the scaled pivot.</summary>
     public float CameraHeightOffset { get; set; }
 
+    /// <summary>Max zoom-out is never scaled below this multiple of the game's normal max distance.</summary>
+    public float CameraMaxZoomFloor { get; set; } = 1f;
+
     /// <summary>When true the plugin keeps re-applying the selected model every frame.</summary>
     public bool Persist { get; set; } = true;
 
