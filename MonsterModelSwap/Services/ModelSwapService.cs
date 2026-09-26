@@ -27,6 +27,7 @@ public sealed unsafe class ModelSwapService : IDisposable
     private readonly IObjectTable objects;
     private readonly IPluginLog log;
     private readonly Configuration config;
+    private readonly CameraScaleService camera;
 
     private readonly Dictionary<nint, int> redrawCooldown = new();
     private readonly List<nint> cooldownExpired = new();
@@ -39,8 +40,10 @@ public sealed unsafe class ModelSwapService : IDisposable
         ICondition condition,
         IObjectTable objects,
         IPluginLog log,
-        Configuration config)
+        Configuration config,
+        CameraScaleService camera)
     {
+        this.camera = camera;
         this.framework = framework;
         this.clientState = clientState;
         this.condition = condition;
@@ -60,6 +63,7 @@ public sealed unsafe class ModelSwapService : IDisposable
         clientState.TerritoryChanged -= OnTerritoryChanged;
         clientState.Login -= OnLogin;
         condition.ConditionChange -= OnConditionChange;
+        camera.Reset();
     }
 
     /// <summary>True while a swap is in effect and the persistence loop should run.</summary>
@@ -151,6 +155,7 @@ public sealed unsafe class ModelSwapService : IDisposable
         TargetHeight = height;
         ReapplyAll("revert", force: true);
 
+        camera.Reset();
         Active = false;
         pendingReapply = false;
         OriginalModelId = null;
@@ -205,6 +210,10 @@ public sealed unsafe class ModelSwapService : IDisposable
         TickCooldowns();
 
         if (!Active) return;
+
+        if (config.ScaleCamera) camera.Update(TargetHeight);
+        else camera.Reset();
+
         if (!config.Persist && !pendingReapply) return;
         if (config.PauseInDuty && condition[ConditionFlag.BoundByDuty]) return;
         if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51]) return;

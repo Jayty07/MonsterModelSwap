@@ -24,6 +24,9 @@ monster's **own skeleton, animations, VFX and scale**. You walk, idle and emote 
   code. Double-click a row or press **Apply**.
 - **Height slider** (`x0.10 … x5.00`) — writes `Character.ModelScale` and the draw object's scale.
   Works standalone (no model swap needed) and is persisted alongside the model.
+- **Scale camera** (on by default) — multiplies the third-person camera's look-at height offset and
+  min/max/current zoom distance by the height factor, so the camera pivots on the resized model instead
+  of at its knees/over its head. Restored on Revert / unload.
 - **Persist toggle** — while on, the plugin:
   - re-applies on `IClientState.TerritoryChanged` (zoning),
   - re-applies on `ICondition.ConditionChange` for cutscene / between-areas / duty / event flags,
@@ -110,5 +113,7 @@ first three names are listed. Feel free to edit it — unknown ids simply show t
   render invisible or crash on redraw. Revert (or reload the plugin) if that happens.
 - The player's hitbox, camera height and gear are untouched; weapons are hidden by most monster models.
 - Height is a multiplier on `ModelScale`; the game may clamp extreme values for some skeletons.
+- Camera scaling writes to the world camera's look-at height offset at a fixed offset (`0x234`, as used
+  by Cammy) that is not yet mapped in FFXIVClientStructs; if a game patch moves it, untick *Scale camera*.
 - Not tested with Glamourer/Penumbra redraws at the same time; both plugins redraw the same actor and
   may fight over it if they have their own model-type overrides active.

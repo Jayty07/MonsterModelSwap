@@ -32,7 +32,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         database = new ModelDatabase(PluginInterface, DataManager, Log);
-        swap = new ModelSwapService(Framework, ClientState, Condition, ObjectTable, Log, config);
+        swap = new ModelSwapService(Framework, ClientState, Condition, ObjectTable, Log, config, new CameraScaleService(Log));
         mainWindow = new MainWindow(PluginInterface, config, database, swap);
         windowSystem.AddWindow(mainWindow);
 

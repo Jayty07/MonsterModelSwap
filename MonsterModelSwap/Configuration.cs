@@ -14,6 +14,9 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Height / model scale multiplier written to Character.ModelScale. 1.0 = default.</summary>
     public float Height { get; set; } = 1.0f;
 
+    /// <summary>Scale the third-person camera pivot height and zoom range together with Height.</summary>
+    public bool ScaleCamera { get; set; } = true;
+
     /// <summary>When true the plugin keeps re-applying the selected model every frame.</summary>
     public bool Persist { get; set; } = true;
 

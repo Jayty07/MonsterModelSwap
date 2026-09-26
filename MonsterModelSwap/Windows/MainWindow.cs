@@ -111,6 +111,14 @@ public sealed class MainWindow : Window
             swap.SetHeight(height);
         }
 
+        ImGui.SameLine();
+        var scaleCamera = config.ScaleCamera;
+        if (ImGui.Checkbox("Scale camera", ref scaleCamera))
+        {
+            config.ScaleCamera = scaleCamera;
+            pi.SavePluginConfig(config);
+        }
+
         ImGui.BeginDisabled(config.SelectedModelId <= 0);
         if (ImGui.Button("Apply", new Vector2(100, 0)))
             swap.Apply(config.SelectedModelId, config.Height);
