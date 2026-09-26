@@ -44,6 +44,13 @@ public sealed unsafe class CameraScaleService : IDisposable
 
     public bool Engaged => engaged;
 
+    /// <summary>Install the camera hook as soon as the world camera exists (needed for ExtraHeight even without a swap).</summary>
+    public void Tick()
+    {
+        var cam = GetWorldCamera();
+        if (cam is not null) EnsureHook(cam);
+    }
+
     /// <summary>Called every frame with the height factor currently enforced on the player.</summary>
     public void Update(float newFactor)
     {
@@ -111,7 +118,7 @@ public sealed unsafe class CameraScaleService : IDisposable
         {
             getCameraPositionHook = interop.HookFromAddress<GetCameraPositionDelegate>(vtbl[GetCameraPositionVfIndex], GetCameraPositionDetour);
             getCameraPositionHook.Enable();
-            log.Debug("Hooked Camera::GetCameraPosition @ {Addr:X}", vtbl[GetCameraPositionVfIndex]);
+            log.Information("Hooked Camera::GetCameraPosition @ {Addr:X}", vtbl[GetCameraPositionVfIndex]);
         }
         catch (Exception e)
         {
@@ -124,15 +131,38 @@ public sealed unsafe class CameraScaleService : IDisposable
     {
         getCameraPositionHook!.Original(camera, target, position, swapPerson);
 
-        if (!engaged || position is null || target is null) return;
+        hookCalls++;
+        if (position is null || target is null) return;
 
         var local = objects.LocalPlayer;
         if (local is null || (nint)target != local.Address) return;
 
-        // The game's look-at height is derived from the unscaled skeleton: add the extra height the
-        // scaled model actually has.
-        var baseOffset = *(float*)((byte*)camera + LookAtHeightOffsetOffset);
-        position->Y += baseOffset * (factor - 1f);
+        var feetY = target->Position.Y;
+        var pivotAboveFeet = position->Y - feetY;
+        lastPivotAboveFeet = pivotAboveFeet;
+        lastFieldOffset = *(float*)((byte*)camera + LookAtHeightOffsetOffset);
+
+        if (!engaged && Math.Abs(ExtraHeight) < 0.0005f) return;
+
+        // The game's pivot is computed from the unscaled skeleton: scale its height above the feet
+        // by the model factor, then add the user's manual offset.
+        position->Y = feetY + pivotAboveFeet * factor + ExtraHeight;
+    }
+
+    /// <summary>Additional manual camera pivot offset (world units) applied on top of the scaling.</summary>
+    public float ExtraHeight { get; set; }
+
+    private long hookCalls;
+    private float lastPivotAboveFeet;
+    private float lastFieldOffset;
+
+    public string DebugInfo()
+    {
+        var cam = GetWorldCamera();
+        return $"hook={(getCameraPositionHook is null ? "none" : getCameraPositionHook.IsEnabled ? "enabled" : "disabled")} " +
+               $"calls={hookCalls} engaged={engaged} factor={factor:0.###} extra={ExtraHeight:0.###} " +
+               $"pivotAboveFeet={lastPivotAboveFeet:0.###} field0x234={lastFieldOffset:0.###} " +
+               $"dist={(cam is null ? -1 : cam->Distance):0.##} min={(cam is null ? -1 : cam->MinDistance):0.##} max={(cam is null ? -1 : cam->MaxDistance):0.##}";
     }
 
     private static Camera* GetWorldCamera()

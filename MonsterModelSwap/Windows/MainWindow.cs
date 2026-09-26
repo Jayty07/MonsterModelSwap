@@ -119,6 +119,21 @@ public sealed class MainWindow : Window
             pi.SavePluginConfig(config);
         }
 
+        ImGui.SetNextItemWidth(260);
+        var camOffset = config.CameraHeightOffset;
+        if (ImGui.SliderFloat("Camera height offset", ref camOffset, -5f, 20f, "%.2f"))
+        {
+            config.CameraHeightOffset = camOffset;
+            pi.SavePluginConfig(config);
+        }
+        ImGui.SameLine();
+        if (ImGui.SmallButton("0"))
+        {
+            config.CameraHeightOffset = 0f;
+            pi.SavePluginConfig(config);
+        }
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Reset camera height offset");
+
         ImGui.BeginDisabled(config.SelectedModelId <= 0);
         if (ImGui.Button("Apply", new Vector2(100, 0)))
             swap.Apply(config.SelectedModelId, config.Height);

@@ -75,6 +75,8 @@ public sealed unsafe class ModelSwapService : IDisposable
     /// <summary>ModelScale we are enforcing.</summary>
     public float TargetHeight { get; private set; } = 1.0f;
 
+    public string CameraDebugInfo() => camera.DebugInfo();
+
     /// <summary>Snapshot of the actor before the very first apply; used for a clean revert.</summary>
     public int? OriginalModelId { get; private set; }
     public float? OriginalHeight { get; private set; }
@@ -208,6 +210,9 @@ public sealed unsafe class ModelSwapService : IDisposable
     private void OnFrameworkUpdate(IFramework _)
     {
         TickCooldowns();
+
+        camera.ExtraHeight = config.CameraHeightOffset;
+        camera.Tick();
 
         if (!Active) return;
 

@@ -39,7 +39,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open the Monster Model Swap window. /mms apply <id> | revert | persist [on|off] | height <x>",
+            HelpMessage = "Open the Monster Model Swap window. /mms apply <id> | revert | persist [on|off] | height <x> | camoffset <y> | camdebug",
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
@@ -108,6 +108,23 @@ public sealed class Plugin : IDalamudPlugin
                 else
                 {
                     Log.Warning("Usage: /mms height <multiplier, e.g. 1.5>");
+                }
+                break;
+
+            case "camdebug":
+                Log.Information("[camdebug] {Info}", swap.CameraDebugInfo());
+                break;
+
+            case "camoffset":
+                if (parts.Length > 1 && float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var co))
+                {
+                    config.CameraHeightOffset = co;
+                    PluginInterface.SavePluginConfig(config);
+                }
+                else
+                {
+                    Log.Warning("Usage: /mms camoffset <world units, e.g. 2.5>");
                 }
                 break;
 

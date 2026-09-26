@@ -17,6 +17,9 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Scale the third-person camera pivot height and zoom range together with Height.</summary>
     public bool ScaleCamera { get; set; } = true;
 
+    /// <summary>Extra camera pivot height in world units, added on top of the scaled pivot.</summary>
+    public float CameraHeightOffset { get; set; }
+
     /// <summary>When true the plugin keeps re-applying the selected model every frame.</summary>
     public bool Persist { get; set; } = true;
 

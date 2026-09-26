@@ -50,6 +50,8 @@ monster's **own skeleton, animations, VFX and scale**. You walk, idle and emote 
 | `/mms apply [id]` | Apply the given (or currently selected) `ModelChara` id |
 | `/mms revert` | Restore the original model / height |
 | `/mms height 1.5` | Set the height multiplier |
+| `/mms camoffset 2` | Extra camera pivot height (world units) |
+| `/mms camdebug` | Log camera hook diagnostics |
 | `/mms persist [on\|off]` | Toggle the persistence loop |
 
 ## How the swap works
