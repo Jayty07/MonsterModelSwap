@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using Dalamud.Configuration;
 
@@ -37,6 +38,10 @@ public sealed class Configuration : IPluginConfiguration
 
     /// <summary>Only list Type 3 (monster, "m") models in the browser.</summary>
     public bool MonstersOnly { get; set; } = true;
+
+    /// <summary>Favorited ModelChara row ids.</summary>
+    public HashSet<int> Favorites { get; set; } = new();
+    public bool FavoritesOnly { get; set; }
 
     /// <summary>Open the main window when the plugin loads.</summary>
     public bool OpenOnStartup { get; set; }

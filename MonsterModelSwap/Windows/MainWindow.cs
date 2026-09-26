@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using MonsterModelSwap.Data;
@@ -23,6 +24,8 @@ public sealed class MainWindow : Window
     private string search = string.Empty;
     private string lastSearch = "\0";
     private bool lastMonstersOnly;
+    private bool lastFavoritesOnly;
+    private int lastFavoritesCount;
     private readonly List<ModelEntry> filtered = new();
     private int manualId;
     private float height;
@@ -195,13 +198,20 @@ public sealed class MainWindow : Window
 
     private void DrawBrowser()
     {
-        ImGui.SetNextItemWidth(-160);
+        ImGui.SetNextItemWidth(-290);
         ImGui.InputTextWithHint("##search", "Search by name, code (m0001) or id", ref search, 64);
         ImGui.SameLine();
         var monstersOnly = config.MonstersOnly;
         if (ImGui.Checkbox("Monsters only", ref monstersOnly))
         {
             config.MonstersOnly = monstersOnly;
+            pi.SavePluginConfig(config);
+        }
+        ImGui.SameLine();
+        var favoritesOnly = config.FavoritesOnly;
+        if (ImGui.Checkbox($"Favorites ({config.Favorites.Count})", ref favoritesOnly))
+        {
+            config.FavoritesOnly = favoritesOnly;
             pi.SavePluginConfig(config);
         }
 
@@ -224,6 +234,22 @@ public sealed class MainWindow : Window
                 {
                     var e = filtered[i];
                     var isSelected = e.Id == config.SelectedModelId;
+                    var isFav = config.Favorites.Contains(e.Id);
+
+                    ImGui.PushStyleColor(ImGuiCol.Text, isFav ? Warn : Dim);
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    var favClicked = ImGui.SmallButton($"{FontAwesomeIcon.Star.ToIconString()}##fav{e.Id}");
+                    ImGui.PopFont();
+                    if (favClicked)
+                    {
+                        if (isFav) config.Favorites.Remove(e.Id);
+                        else config.Favorites.Add(e.Id);
+                        pi.SavePluginConfig(config);
+                    }
+                    ImGui.PopStyleColor();
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip(isFav ? "Remove from favorites" : "Add to favorites");
+                    ImGui.SameLine();
+
                     if (ImGui.Selectable($"{e.Label}##{e.Id}", isSelected, ImGuiSelectableFlags.AllowDoubleClick))
                     {
                         config.SelectedModelId = e.Id;
@@ -244,13 +270,20 @@ public sealed class MainWindow : Window
 
     private void RefreshFilter()
     {
-        if (search == lastSearch && config.MonstersOnly == lastMonstersOnly && filtered.Count > 0) return;
+        if (search == lastSearch
+            && config.MonstersOnly == lastMonstersOnly
+            && config.FavoritesOnly == lastFavoritesOnly
+            && (!config.FavoritesOnly || config.Favorites.Count == lastFavoritesCount)
+            && filtered.Count > 0) return;
         lastSearch = search;
         lastMonstersOnly = config.MonstersOnly;
+        lastFavoritesOnly = config.FavoritesOnly;
+        lastFavoritesCount = config.Favorites.Count;
         filtered.Clear();
         foreach (var e in db.Entries)
         {
-            if (config.MonstersOnly && !e.IsMonster) continue;
+            if (config.FavoritesOnly && !config.Favorites.Contains(e.Id)) continue;
+            if (config.MonstersOnly && !config.FavoritesOnly && !e.IsMonster) continue;
             if (!e.Matches(search)) continue;
             filtered.Add(e);
         }

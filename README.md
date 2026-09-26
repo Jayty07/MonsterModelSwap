@@ -22,6 +22,7 @@ monster's **own skeleton, animations, VFX and scale**. You walk, idle and emote 
   models `m0001 … m9998`; untick *Monsters only* for demihumans/humans/etc.). ~1,800 rows carry a
   display name from `Data/models.json`; everything else falls back to the raw `mXXXX bYYYY vZZZZ (#id)`
   code. Double-click a row or press **Apply**.
+- **Favorites** — star any row to pin it; tick *Favorites* to list only starred models.
 - **Height slider** (`x0.10 … x5.00`) — writes `Character.ModelScale` and the draw object's scale.
   Works standalone (no model swap needed) and is persisted alongside the model.
 - **Scale camera** (on by default) — raises/lowers the third-person camera's look-at point (via a hook on
