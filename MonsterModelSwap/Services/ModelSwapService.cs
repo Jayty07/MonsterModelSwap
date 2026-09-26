@@ -160,6 +160,8 @@ public sealed unsafe class ModelSwapService : IDisposable
         TargetModelId = model;
         TargetHeight = height;
         reverting = true;
+        foreach (var addr in LocalCharacterAddresses())
+            ((Character*)addr)->Timeline.BaseOverride = 0;
         ReapplyAll("revert", force: true);
         reverting = false;
 
@@ -353,6 +355,26 @@ public sealed unsafe class ModelSwapService : IDisposable
             && pc.HomeWorld.RowId == localWorld
             && string.Equals(pc.Name.TextValue, localName, StringComparison.Ordinal);
     }
+
+    /// <summary>Main local actor plus any cutscene/gpose copies that currently have a draw object.</summary>
+    public IEnumerable<nint> LocalCharacterAddresses()
+    {
+        var local = objects.LocalPlayer;
+        if (local is null || local.Address == nint.Zero) yield break;
+
+        var localName = local.Name.TextValue;
+        var localWorld = local.HomeWorld.RowId;
+        foreach (var obj in objects)
+        {
+            if (obj is not IPlayerCharacter pc) continue;
+            if (!IsLocalPlayerCopy(pc, local, localName, localWorld)) continue;
+            if (!HasDrawObject(pc.Address)) continue;
+            yield return pc.Address;
+        }
+    }
+
+    private static bool HasDrawObject(nint addr) =>
+        addr != nint.Zero && ((Character*)addr)->GameObject.DrawObject is not null;
 
     private Character* GetLocalCharacter()
     {

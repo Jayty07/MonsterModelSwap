@@ -21,12 +21,14 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ICondition Condition { get; private set; } = null!;
     [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
+    [PluginService] internal static IKeyState KeyState { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 
     private readonly WindowSystem windowSystem = new("MonsterModelSwap");
     private readonly Configuration config;
     private readonly ModelDatabase database;
     private readonly ModelSwapService swap;
+    private readonly AnimationService anim;
     private readonly MainWindow mainWindow;
 
     public Plugin()
@@ -34,13 +36,17 @@ public sealed class Plugin : IDalamudPlugin
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         database = new ModelDatabase(PluginInterface, DataManager, Log);
         swap = new ModelSwapService(Framework, ClientState, Condition, ObjectTable, Log, config, new CameraScaleService(Log, ObjectTable, GameInterop));
-        mainWindow = new MainWindow(PluginInterface, config, database, swap);
+        anim = new AnimationService(DataManager, KeyState, Log, config, swap, database);
+        anim.BindsChanged += SaveConfig;
+        mainWindow = new MainWindow(PluginInterface, config, database, swap, anim);
         windowSystem.AddWindow(mainWindow);
 
         CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open the Monster Model Swap window. /mms apply <id> | revert | persist [on|off] | height <x> | camoffset <y> | camdebug",
+            HelpMessage = "Open the Monster Model Swap window. /mms apply <id> | revert | persist [on|off] | height <x> | camoffset <y> | anim <timeline id> | animloop <id|0> | animstop | camdebug",
         });
+
+        Framework.Update += OnFrameworkUpdate;
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
@@ -58,6 +64,9 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleMainUi;
         CommandManager.RemoveHandler(Command);
         windowSystem.RemoveAllWindows();
+        Framework.Update -= OnFrameworkUpdate;
+        anim.BindsChanged -= SaveConfig;
+        anim.Dispose();
 
         try
         {
@@ -75,6 +84,10 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     private void ToggleMainUi() => mainWindow.Toggle();
+
+    private void SaveConfig() => PluginInterface.SavePluginConfig(config);
+
+    private void OnFrameworkUpdate(IFramework _) => anim.Tick();
 
     private void OnCommand(string command, string args)
     {
@@ -120,6 +133,24 @@ public sealed class Plugin : IDalamudPlugin
                 {
                     Log.Warning("Usage: /mms height <multiplier, e.g. 1.5>");
                 }
+                break;
+
+            case "anim":
+                if (parts.Length > 1 && ushort.TryParse(parts[1], out var tl) && tl > 0)
+                    anim.Play(tl);
+                else
+                    Log.Warning("Usage: /mms anim <ActionTimeline id>");
+                break;
+
+            case "animloop":
+                if (parts.Length > 1 && ushort.TryParse(parts[1], out var loop))
+                    anim.SetLoop(loop);
+                else
+                    Log.Warning("Usage: /mms animloop <ActionTimeline id | 0 to clear>");
+                break;
+
+            case "animstop":
+                anim.Stop();
                 break;
 
             case "camdebug":

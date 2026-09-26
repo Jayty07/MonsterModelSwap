@@ -43,6 +43,29 @@ public sealed class Configuration : IPluginConfiguration
     public HashSet<int> Favorites { get; set; } = new();
     public bool FavoritesOnly { get; set; }
 
+    public List<AnimationBind> AnimationBinds { get; set; } = new();
+
     /// <summary>Open the main window when the plugin loads.</summary>
     public bool OpenOnStartup { get; set; }
+}
+
+[Serializable]
+public sealed class AnimationBind
+{
+    /// <summary>ActionTimeline row to play.</summary>
+    public ushort TimelineId { get; set; }
+
+    /// <summary>ModelChara row this bind was created for (0 = fire regardless of active model).</summary>
+    public int ModelId { get; set; }
+
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>Play as looping base animation (replaces idle) instead of a one-shot.</summary>
+    public bool Loop { get; set; }
+
+    /// <summary>VirtualKey code; 0 = unbound.</summary>
+    public int Key { get; set; }
+    public bool Ctrl { get; set; }
+    public bool Shift { get; set; }
+    public bool Alt { get; set; }
 }

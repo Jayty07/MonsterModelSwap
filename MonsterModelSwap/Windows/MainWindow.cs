@@ -20,6 +20,13 @@ public sealed class MainWindow : Window
     private readonly Configuration config;
     private readonly ModelDatabase db;
     private readonly ModelSwapService swap;
+    private readonly AnimationService anim;
+
+    private string animSearch = string.Empty;
+    private readonly List<AnimationEntry> animFiltered = new();
+    private string animLastSearch = "\0";
+    private int animLastCount = -1;
+    private AnimationEntry? animSelected;
 
     private string search = string.Empty;
     private string lastSearch = "\0";
@@ -30,13 +37,14 @@ public sealed class MainWindow : Window
     private int manualId;
     private float height;
 
-    public MainWindow(IDalamudPluginInterface pi, Configuration config, ModelDatabase db, ModelSwapService swap)
+    public MainWindow(IDalamudPluginInterface pi, Configuration config, ModelDatabase db, ModelSwapService swap, AnimationService anim)
         : base("Monster Model Swap###MonsterModelSwapMain")
     {
         this.pi = pi;
         this.config = config;
         this.db = db;
         this.swap = swap;
+        this.anim = anim;
 
         manualId = config.SelectedModelId;
         height = config.Height;
@@ -52,11 +60,165 @@ public sealed class MainWindow : Window
 
     public override void Draw()
     {
+        anim.SuppressKeybinds = ImGui.GetIO().WantTextInput;
+
         DrawStatus();
         ImGui.Separator();
-        DrawControls();
-        ImGui.Separator();
-        DrawBrowser();
+
+        if (!ImGui.BeginTabBar("##tabs")) return;
+
+        if (ImGui.BeginTabItem("Models"))
+        {
+            DrawControls();
+            ImGui.Separator();
+            DrawBrowser();
+            ImGui.EndTabItem();
+        }
+
+        if (ImGui.BeginTabItem("Animations"))
+        {
+            DrawAnimations();
+            ImGui.EndTabItem();
+        }
+
+        ImGui.EndTabBar();
+    }
+
+    private void DrawAnimations()
+    {
+        var modelId = swap.Active ? swap.TargetModelId : config.SelectedModelId;
+        if (modelId <= 0)
+        {
+            ImGui.TextColored(Dim, "Select (or apply) a model first to list the animations its skeleton can play.");
+            return;
+        }
+
+        anim.EnsureScanned(modelId);
+
+        ImGui.TextUnformatted($"Skeleton: {db.Describe(modelId)}");
+        if (!swap.Active)
+            ImGui.TextColored(Warn, "Model not applied — animations will play on your normal model and may not exist for it.");
+
+        if (anim.Scanning) ImGui.TextColored(Dim, "Scanning game files...");
+        else if (anim.ScanError is { } err) ImGui.TextColored(Warn, err);
+        else ImGui.TextColored(Dim, $"{anim.Available.Count} playable animations");
+
+        ImGui.SameLine();
+        if (ImGui.Button("Stop / idle")) anim.Stop();
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Clear the loop override and return to idle");
+
+        ImGui.SetNextItemWidth(-1);
+        ImGui.InputTextWithHint("##animsearch", "Search by key (e.g. mon_sp, battle, emote) or id", ref animSearch, 64);
+        RefreshAnimFilter();
+
+        var bindsHeight = Math.Min(160f, 30f + config.AnimationBinds.Count * 26f);
+        if (ImGui.BeginChild("##animlist", new Vector2(-1, -bindsHeight - 8), true))
+        {
+            unsafe
+            {
+                var clipper = ImGui.ImGuiListClipper();
+                clipper.Begin(animFiltered.Count);
+                while (clipper.Step())
+                {
+                    for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                    {
+                        var e = animFiltered[i];
+                        ImGui.PushID(e.Id);
+
+                        if (ImGui.SmallButton("Play")) anim.Play(e.Id);
+                        ImGui.SameLine();
+                        if (ImGui.SmallButton("Loop")) anim.SetLoop(e.Id);
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Use as looping idle replacement");
+                        ImGui.SameLine();
+                        if (ImGui.SmallButton("Bind"))
+                        {
+                            var b = new AnimationBind { TimelineId = e.Id, ModelId = modelId, Label = e.Key };
+                            config.AnimationBinds.Add(b);
+                            anim.Capturing = b;
+                            pi.SavePluginConfig(config);
+                        }
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Add a keybind for this animation");
+                        ImGui.SameLine();
+
+                        var selected = animSelected == e || anim.LastPlayed == e.Id;
+                        if (ImGui.Selectable(e.Label, selected, ImGuiSelectableFlags.AllowDoubleClick))
+                        {
+                            animSelected = e;
+                            if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) anim.Play(e.Id);
+                        }
+
+                        ImGui.PopID();
+                    }
+                }
+
+                clipper.End();
+                clipper.Destroy();
+            }
+        }
+        ImGui.EndChild();
+
+        ImGui.TextColored(Dim, $"Keybinds ({config.AnimationBinds.Count})");
+        if (ImGui.BeginChild("##binds", new Vector2(-1, -1), true))
+        {
+            AnimationBind? remove = null;
+            for (var i = 0; i < config.AnimationBinds.Count; i++)
+            {
+                var b = config.AnimationBinds[i];
+                ImGui.PushID(i);
+
+                var capturing = anim.Capturing == b;
+                ImGui.PushStyleColor(ImGuiCol.Text, capturing ? Warn : b.Key == 0 ? Dim : Ok);
+                if (ImGui.Button(capturing ? "press a key..." : AnimationService.Describe(b), new Vector2(130, 0)))
+                    anim.Capturing = capturing ? null : b;
+                ImGui.PopStyleColor();
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip("Click, then press the key (with Ctrl/Shift/Alt). Esc cancels.");
+
+                ImGui.SameLine();
+                var loop = b.Loop;
+                if (ImGui.Checkbox("Loop", ref loop))
+                {
+                    b.Loop = loop;
+                    pi.SavePluginConfig(config);
+                }
+
+                ImGui.SameLine();
+                var anyModel = b.ModelId == 0;
+                if (ImGui.Checkbox("Any model", ref anyModel))
+                {
+                    b.ModelId = anyModel ? 0 : modelId;
+                    pi.SavePluginConfig(config);
+                }
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip(anyModel ? "Fires whatever model is active" : $"Only fires while model #{b.ModelId} is applied");
+
+                ImGui.SameLine();
+                if (ImGui.SmallButton("Play")) { if (b.Loop) anim.SetLoop(b.TimelineId); else anim.Play(b.TimelineId); }
+                ImGui.SameLine();
+                if (ImGui.SmallButton("X")) remove = b;
+                ImGui.SameLine();
+                ImGui.TextUnformatted($"{b.Label} (#{b.TimelineId})");
+
+                ImGui.PopID();
+            }
+
+            if (remove is not null)
+            {
+                if (anim.Capturing == remove) anim.Capturing = null;
+                config.AnimationBinds.Remove(remove);
+                pi.SavePluginConfig(config);
+            }
+        }
+        ImGui.EndChild();
+    }
+
+    private void RefreshAnimFilter()
+    {
+        if (animSearch == animLastSearch && anim.Available.Count == animLastCount) return;
+        animLastSearch = animSearch;
+        animLastCount = anim.Available.Count;
+        animFiltered.Clear();
+        foreach (var e in anim.Available)
+            if (e.Matches(animSearch)) animFiltered.Add(e);
     }
 
     private void DrawStatus()

@@ -23,6 +23,12 @@ monster's **own skeleton, animations, VFX and scale**. You walk, idle and emote 
   display name from `Data/models.json`; everything else falls back to the raw `mXXXX bYYYY vZZZZ (#id)`
   code. Double-click a row or press **Apply**.
 - **Favorites** — star any row to pin it; tick *Favorites* to list only starred models.
+- **Animations tab** — lists every `ActionTimeline` the selected skeleton can actually play (checked by
+  looking for `chara/monster/mXXXX/animation/a0001/bt_common/<key>.pap` in the game files). **Play** fires
+  a one-shot, **Loop** replaces the idle animation (`TimelineContainer.BaseOverride`), **Bind** adds a
+  keybind (click the key button, press a key with optional Ctrl/Shift/Alt; Esc cancels). Binds can be
+  restricted to the model they were made for or fire for any model; they are ignored while a text
+  field has focus. *Stop / idle* clears the loop and returns to idle.
 - **Height slider** (`x0.10 … x5.00`) — writes `Character.ModelScale` and the draw object's scale.
   Works standalone (no model swap needed) and is persisted alongside the model.
 - **Scale camera** (on by default) — raises/lowers the third-person camera's look-at point (via a hook on
@@ -52,6 +58,9 @@ monster's **own skeleton, animations, VFX and scale**. You walk, idle and emote 
 | `/mms revert` | Restore the original model / height |
 | `/mms height 1.5` | Set the height multiplier |
 | `/mms camoffset 2` | Extra camera pivot height (world units) |
+| `/mms anim <id>` | Play an `ActionTimeline` row once |
+| `/mms animloop <id\|0>` | Loop a row as the idle replacement (0 clears) |
+| `/mms animstop` | Clear loop and return to idle |
 | `/mms camdebug` | Log camera hook diagnostics |
 | `/mms persist [on\|off]` | Toggle the persistence loop |
 
