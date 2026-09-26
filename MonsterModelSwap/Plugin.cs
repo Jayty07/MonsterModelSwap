@@ -48,7 +48,7 @@ public sealed class Plugin : IDalamudPlugin
 
         if (config.OpenOnStartup) mainWindow.IsOpen = true;
         if (config.ApplyOnLogin && config.SelectedModelId > 0 && ClientState.IsLoggedIn)
-            swap.Apply(config.SelectedModelId, config.Height);
+            Framework.RunOnFrameworkThread(() => swap.Apply(config.SelectedModelId, config.Height));
     }
 
     public void Dispose()
@@ -59,7 +59,18 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(Command);
         windowSystem.RemoveAllWindows();
 
-        if (swap.Active) swap.Revert();
+        try
+        {
+            Framework.RunOnFrameworkThread(() =>
+            {
+                if (swap.Active) swap.Revert();
+            }).Wait(2000);
+        }
+        catch (System.Exception e)
+        {
+            Log.Warning(e, "Revert on unload failed");
+        }
+
         swap.Dispose();
     }
 
