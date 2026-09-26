@@ -66,12 +66,13 @@ actors with a null `DrawObject` (mid-spawn) are skipped and picked up on a later
 
 The plugin is not in the official Dalamud repository, so it is loaded as a **dev plugin**.
 
-1. Get a build:
-   - download `MonsterModelSwap-plugin.zip` from the latest GitHub Actions run / release, **or**
+1. Get a **compiled** build — the source code in this repo does *not* contain the DLL:
+   - download `MonsterModelSwap-plugin.zip` from the
+     [latest release](https://github.com/Jayty07/MonsterModelSwap/releases/latest), **or**
    - build it yourself (see [Building](#building)); the output is `MonsterModelSwap/bin/Release/`.
-2. Extract/copy the folder somewhere permanent, e.g.
-   `%AppData%\XIVLauncher\devPlugins\MonsterModelSwap\`. It must contain
-   `MonsterModelSwap.dll`, `MonsterModelSwap.json` and the `Data\models.json` file side by side.
+2. Extract the zip. You get a `MonsterModelSwap` folder containing `MonsterModelSwap.dll`,
+   `MonsterModelSwap.json` and `Data\models.json`. Move that folder somewhere permanent, e.g.
+   `%AppData%\XIVLauncher\devPlugins\MonsterModelSwap\`.
 3. Launch the game through XIVLauncher, then in game type `/xlsettings`.
 4. **Experimental** tab → *Dev Plugin Locations* → click **+**, paste the full path to
    `MonsterModelSwap.dll` (or the folder), tick **Enabled**, then **Save and Close**.
