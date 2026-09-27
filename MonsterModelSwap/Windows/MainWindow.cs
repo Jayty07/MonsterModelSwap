@@ -326,6 +326,31 @@ public sealed class MainWindow : Window
         }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Reset cutscene camera height");
 
+        if (Math.Abs(config.CutsceneCameraOffset) > 0.0005f)
+        {
+            ImGui.Indent();
+            ImGui.SetNextItemWidth(200);
+            var range = config.CutsceneCameraRange;
+            if (ImGui.SliderFloat("Only shots aimed within", ref range, 0.5f, 15f, "%.1f m of you"))
+            {
+                config.CutsceneCameraRange = Math.Clamp(range, 0.5f, 15f);
+                pi.SavePluginConfig(config);
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Shots whose focus point is farther than this from your character (wide shots, NPC close-ups) are left alone.");
+
+            ImGui.SetNextItemWidth(200);
+            var lowAim = config.CutsceneCameraLowAim;
+            if (ImGui.SliderFloat("and aimed lower than", ref lowAim, 0f, 5f, "%.1f m above feet"))
+            {
+                config.CutsceneCameraLowAim = Math.Clamp(lowAim, 0f, 5f);
+                pi.SavePluginConfig(config);
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Only shots whose focus point is below this height are shifted (the ones framing the floor).\nRaise to 5 to shift every shot near you.");
+            ImGui.Unindent();
+        }
+
         ImGui.BeginDisabled(config.SelectedModelId <= 0);
         if (ImGui.Button("Apply", new Vector2(100, 0)))
             swap.Apply(config.SelectedModelId, config.Height);

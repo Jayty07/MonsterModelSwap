@@ -26,6 +26,10 @@ public sealed class Configuration : IPluginConfiguration
 
     /// <summary>Vertical shift (world units) applied to cutscene/dialogue cameras. 0 = off.</summary>
     public float CutsceneCameraOffset { get; set; }
+    /// <summary>Shift only shots whose look-at point is within this XZ distance of the player.</summary>
+    public float CutsceneCameraRange { get; set; } = 3f;
+    /// <summary>Shift only shots whose look-at point is below feet + this many units (aimed at the floor).</summary>
+    public float CutsceneCameraLowAim { get; set; } = 1f;
 
     /// <summary>When true the plugin keeps re-applying the selected model every frame.</summary>
     public bool Persist { get; set; } = true;

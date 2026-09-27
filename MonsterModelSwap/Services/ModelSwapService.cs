@@ -224,6 +224,17 @@ public sealed unsafe class ModelSwapService : IDisposable
         camera.MaxZoomFloor = config.CameraMaxZoomFloor;
         camera.CutsceneOffset = config.CutsceneCameraOffset;
         camera.CutsceneActive = InCutscene;
+        camera.CutsceneRange = config.CutsceneCameraRange;
+        camera.CutsceneLowAim = config.CutsceneCameraLowAim;
+        camera.LocalActorPositions.Clear();
+        if (camera.CutsceneActive && Math.Abs(config.CutsceneCameraOffset) > 0.0005f)
+        {
+            foreach (var addr in LocalCharacterAddresses())
+            {
+                var p = ((Character*)addr)->GameObject.Position;
+                camera.LocalActorPositions.Add(new Vector3(p.X, p.Y, p.Z));
+            }
+        }
         camera.Tick();
 
         if (!Active) return;

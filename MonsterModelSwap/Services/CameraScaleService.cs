@@ -31,7 +31,14 @@ public sealed unsafe class CameraScaleService : IDisposable
     /// <summary>Vertical world-space shift applied to every scene camera while <see cref="CutsceneActive"/> is true.</summary>
     public float CutsceneOffset { get; set; }
     public bool CutsceneActive { get; set; }
+    /// <summary>Only shots whose look-at point lies within this XZ distance of a local actor are shifted.</summary>
+    public float CutsceneRange { get; set; } = 3f;
+    /// <summary>Only shots whose look-at point is below feet + this height are shifted (i.e. aimed at the floor).</summary>
+    public float CutsceneLowAim { get; set; } = 1f;
+    /// <summary>World positions of the local actor and its cutscene copies, refreshed every tick.</summary>
+    public readonly System.Collections.Generic.List<Vector3> LocalActorPositions = new();
     private long cutsceneRenderCalls;
+    private long cutsceneShiftedCalls;
     private nint lastSceneCamera;
 
     private readonly IPluginLog log;
@@ -193,11 +200,32 @@ public sealed unsafe class CameraScaleService : IDisposable
         lastSceneCamera = (nint)camera;
         var pos = camera->Position;
         var look = camera->LookAtVector;
+        if (!TargetsLocalActor(look))
+        {
+            updateRenderHook!.Original(camera);
+            return;
+        }
+
+        cutsceneShiftedCalls++;
         camera->Position.Y += CutsceneOffset;
         camera->LookAtVector.Y += CutsceneOffset;
         updateRenderHook!.Original(camera);
         camera->Position = pos;
         camera->LookAtVector = look;
+    }
+
+    private bool TargetsLocalActor(FFXIVClientStructs.FFXIV.Common.Math.Vector3 look)
+    {
+        var r2 = CutsceneRange * CutsceneRange;
+        foreach (var p in LocalActorPositions)
+        {
+            var dx = look.X - p.X;
+            var dz = look.Z - p.Z;
+            if (dx * dx + dz * dz > r2) continue;
+            if (look.Y - p.Y > CutsceneLowAim) continue;
+            return true;
+        }
+        return false;
     }
 
     /// <summary>Additional manual camera pivot offset (world units) applied on top of the scaling.</summary>
@@ -213,7 +241,7 @@ public sealed unsafe class CameraScaleService : IDisposable
         return $"hook={(getCameraPositionHook is null ? "none" : getCameraPositionHook.IsEnabled ? "enabled" : "disabled")} " +
                $"calls={hookCalls} engaged={engaged} factor={factor:0.###} extra={ExtraHeight:0.###} zoomFloor={MaxZoomFloor:0.###} " +
                $"pivotAboveFeet={lastPivotAboveFeet:0.###} field0x234={lastFieldOffset:0.###} " +
-               $"renderHook={(updateRenderHook is null ? "none" : updateRenderHook.IsEnabled ? "enabled" : "disabled")} cutscene={CutsceneActive} cutOffset={CutsceneOffset:0.###} cutCalls={cutsceneRenderCalls} lastSceneCam={lastSceneCamera:X} " +
+               $"renderHook={(updateRenderHook is null ? "none" : updateRenderHook.IsEnabled ? "enabled" : "disabled")} cutscene={CutsceneActive} cutOffset={CutsceneOffset:0.###} cutCalls={cutsceneRenderCalls} shifted={cutsceneShiftedCalls} range={CutsceneRange:0.##} lowAim={CutsceneLowAim:0.##} actors={LocalActorPositions.Count} lastSceneCam={lastSceneCamera:X} " +
                $"dist={(cam is null ? -1 : cam->Distance):0.##} min={(cam is null ? -1 : cam->MinDistance):0.##} max={(cam is null ? -1 : cam->MaxDistance):0.##}";
     }
 
