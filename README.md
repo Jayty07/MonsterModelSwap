@@ -58,6 +58,7 @@ monster's **own skeleton, animations, VFX and scale**. You walk, idle and emote 
 | `/mms revert` | Restore the original model / height |
 | `/mms height 1.5` | Set the height multiplier |
 | `/mms camoffset 2` | Extra camera pivot height (world units) |
+| `/mms headheight 1.8` | Head/eye height (metres) cutscene & dialogue cameras aim at; `0` = game default. Also a slider in the window |
 | `/mms anim <id>` | Play an `ActionTimeline` row once |
 | `/mms animloop <id\|0>` | Loop a row as the idle replacement (0 clears) |
 | `/mms animstop` | Clear loop and return to idle |

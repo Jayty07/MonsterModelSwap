@@ -121,6 +121,19 @@ public sealed class Plugin : IDalamudPlugin
                 swap.Revert();
                 break;
 
+            case "headheight":
+                if (parts.Length > 1 && float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var hh))
+                {
+                    config.HeadHeight = System.Math.Clamp(hh, 0f, 10f);
+                    PluginInterface.SavePluginConfig(config);
+                }
+                else
+                {
+                    Log.Warning($"Usage: /mms headheight <metres, 0 = auto>. Game's current value: {swap.CurrentHeadHeight:F2}");
+                }
+                break;
+
             case "height":
                 if (parts.Length > 1 && float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
                         System.Globalization.CultureInfo.InvariantCulture, out var h))

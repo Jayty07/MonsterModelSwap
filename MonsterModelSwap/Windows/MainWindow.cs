@@ -309,6 +309,40 @@ public sealed class MainWindow : Window
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Max zoom-out distance never shrinks below this multiple of the game's normal max,\neven when Height is set very low. x1.00 = always at least the normal zoom range.");
 
+        ImGui.SetNextItemWidth(260);
+        var headHeight = config.HeadHeight;
+        if (ImGui.SliderFloat("Cutscene head height", ref headHeight, 0f, 10f, headHeight <= 0f ? "auto" : "%.2f m"))
+        {
+            config.HeadHeight = Math.Clamp(headHeight, 0f, 10f);
+            pi.SavePluginConfig(config);
+        }
+        if (ImGui.IsItemHovered())
+        {
+            var cur = swap.CurrentHeadHeight;
+            ImGui.SetTooltip("Height above the feet that cutscene/dialogue cameras aim at (the actor's Height value).\n"
+                + "0 = leave the game's value. Set roughly to where the monster's head is.\n"
+                + (cur is null ? string.Empty : $"Game's current value: {cur.Value:F2} m"));
+        }
+        ImGui.SameLine();
+        if (ImGui.Button("Use current"))
+        {
+            var cur = swap.CurrentHeadHeight;
+            if (cur is > 0f)
+            {
+                config.HeadHeight = Math.Clamp(cur.Value, 0f, 10f);
+                pi.SavePluginConfig(config);
+            }
+        }
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Copy the game's current head height into the slider as a starting point");
+        ImGui.SameLine();
+        var headEverywhere = config.HeadHeightEverywhere;
+        if (ImGui.Checkbox("Always", ref headEverywhere))
+        {
+            config.HeadHeightEverywhere = headEverywhere;
+            pi.SavePluginConfig(config);
+        }
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Apply the head height outside cutscenes too (affects target/nameplate placement)");
+
         ImGui.BeginDisabled(config.SelectedModelId <= 0);
         if (ImGui.Button("Apply", new Vector2(100, 0)))
             swap.Apply(config.SelectedModelId, config.Height);
