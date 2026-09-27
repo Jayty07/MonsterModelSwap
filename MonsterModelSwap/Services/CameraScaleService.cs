@@ -5,6 +5,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using SceneCamera = FFXIVClientStructs.FFXIV.Client.Graphics.Scene.Camera;
 
 namespace MonsterModelSwap.Services;
 
@@ -20,8 +21,18 @@ public sealed unsafe class CameraScaleService : IDisposable
     // Camera.SavedModelSkeletonId @ 0x23C (mapped, used as a layout sanity check).
     private const int LookAtHeightOffsetOffset = 0x234;
     private const int GetCameraPositionVfIndex = 16;
+    private const int SceneCameraUpdateRenderVfIndex = 4;
 
     private delegate void GetCameraPositionDelegate(Camera* camera, GameObject* target, Vector3* position, byte swapPerson);
+    private delegate void SceneCameraUpdateRenderDelegate(SceneCamera* camera);
+
+    private Hook<SceneCameraUpdateRenderDelegate>? updateRenderHook;
+
+    /// <summary>Vertical world-space shift applied to every scene camera while <see cref="CutsceneActive"/> is true.</summary>
+    public float CutsceneOffset { get; set; }
+    public bool CutsceneActive { get; set; }
+    private long cutsceneRenderCalls;
+    private nint lastSceneCamera;
 
     private readonly IPluginLog log;
     private readonly IObjectTable objects;
@@ -112,6 +123,8 @@ public sealed unsafe class CameraScaleService : IDisposable
         Reset();
         getCameraPositionHook?.Dispose();
         getCameraPositionHook = null;
+        updateRenderHook?.Dispose();
+        updateRenderHook = null;
     }
 
     private void EnsureHook(Camera* cam)
@@ -126,6 +139,14 @@ public sealed unsafe class CameraScaleService : IDisposable
             getCameraPositionHook = interop.HookFromAddress<GetCameraPositionDelegate>(vtbl[GetCameraPositionVfIndex], GetCameraPositionDetour);
             getCameraPositionHook.Enable();
             log.Information("Hooked Camera::GetCameraPosition @ {Addr:X}", vtbl[GetCameraPositionVfIndex]);
+
+            var sceneVtbl = (nint*)cam->SceneCamera.VirtualTable;
+            if (sceneVtbl is not null)
+            {
+                updateRenderHook = interop.HookFromAddress<SceneCameraUpdateRenderDelegate>(sceneVtbl[SceneCameraUpdateRenderVfIndex], UpdateRenderDetour);
+                updateRenderHook.Enable();
+                log.Information("Hooked Scene::Camera::UpdateRender @ {Addr:X}", sceneVtbl[SceneCameraUpdateRenderVfIndex]);
+            }
         }
         catch (Exception e)
         {
@@ -156,6 +177,29 @@ public sealed unsafe class CameraScaleService : IDisposable
         position->Y = feetY + pivotAboveFeet * factor + ExtraHeight;
     }
 
+    /// <summary>
+    /// Cutscene cameras drive the scene camera directly (not via Camera::GetCameraPosition), so the whole
+    /// camera is shifted vertically for the duration of the render update and restored afterwards.
+    /// </summary>
+    private void UpdateRenderDetour(SceneCamera* camera)
+    {
+        if (!CutsceneActive || Math.Abs(CutsceneOffset) < 0.0005f || camera is null)
+        {
+            updateRenderHook!.Original(camera);
+            return;
+        }
+
+        cutsceneRenderCalls++;
+        lastSceneCamera = (nint)camera;
+        var pos = camera->Position;
+        var look = camera->LookAtVector;
+        camera->Position.Y += CutsceneOffset;
+        camera->LookAtVector.Y += CutsceneOffset;
+        updateRenderHook!.Original(camera);
+        camera->Position = pos;
+        camera->LookAtVector = look;
+    }
+
     /// <summary>Additional manual camera pivot offset (world units) applied on top of the scaling.</summary>
     public float ExtraHeight { get; set; }
 
@@ -169,6 +213,7 @@ public sealed unsafe class CameraScaleService : IDisposable
         return $"hook={(getCameraPositionHook is null ? "none" : getCameraPositionHook.IsEnabled ? "enabled" : "disabled")} " +
                $"calls={hookCalls} engaged={engaged} factor={factor:0.###} extra={ExtraHeight:0.###} zoomFloor={MaxZoomFloor:0.###} " +
                $"pivotAboveFeet={lastPivotAboveFeet:0.###} field0x234={lastFieldOffset:0.###} " +
+               $"renderHook={(updateRenderHook is null ? "none" : updateRenderHook.IsEnabled ? "enabled" : "disabled")} cutscene={CutsceneActive} cutOffset={CutsceneOffset:0.###} cutCalls={cutsceneRenderCalls} lastSceneCam={lastSceneCamera:X} " +
                $"dist={(cam is null ? -1 : cam->Distance):0.##} min={(cam is null ? -1 : cam->MinDistance):0.##} max={(cam is null ? -1 : cam->MaxDistance):0.##}";
     }
 

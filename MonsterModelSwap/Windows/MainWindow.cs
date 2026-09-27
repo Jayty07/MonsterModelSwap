@@ -310,38 +310,21 @@ public sealed class MainWindow : Window
             ImGui.SetTooltip("Max zoom-out distance never shrinks below this multiple of the game's normal max,\neven when Height is set very low. x1.00 = always at least the normal zoom range.");
 
         ImGui.SetNextItemWidth(260);
-        var headHeight = config.HeadHeight;
-        if (ImGui.SliderFloat("Cutscene head height", ref headHeight, 0f, 10f, headHeight <= 0f ? "auto" : "%.2f m"))
+        var cutOffset = config.CutsceneCameraOffset;
+        if (ImGui.SliderFloat("Cutscene camera height", ref cutOffset, -5f, 10f, "%.2f"))
         {
-            config.HeadHeight = Math.Clamp(headHeight, 0f, 10f);
+            config.CutsceneCameraOffset = Math.Clamp(cutOffset, -5f, 10f);
             pi.SavePluginConfig(config);
         }
         if (ImGui.IsItemHovered())
-        {
-            var cur = swap.CurrentHeadHeight;
-            ImGui.SetTooltip("Height above the feet that cutscene/dialogue cameras aim at (the actor's Height value).\n"
-                + "0 = leave the game's value. Set roughly to where the monster's head is.\n"
-                + (cur is null ? string.Empty : $"Game's current value: {cur.Value:F2} m"));
-        }
+            ImGui.SetTooltip("Shifts cutscene and dialogue cameras up (or down) by this many world units.\nUse it when cutscenes frame the floor instead of the monster's head. 0 = off.\nCan be adjusted live while a cutscene is playing.");
         ImGui.SameLine();
-        if (ImGui.Button("Use current"))
+        if (ImGui.Button("0##cutreset"))
         {
-            var cur = swap.CurrentHeadHeight;
-            if (cur is > 0f)
-            {
-                config.HeadHeight = Math.Clamp(cur.Value, 0f, 10f);
-                pi.SavePluginConfig(config);
-            }
-        }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Copy the game's current head height into the slider as a starting point");
-        ImGui.SameLine();
-        var headEverywhere = config.HeadHeightEverywhere;
-        if (ImGui.Checkbox("Always", ref headEverywhere))
-        {
-            config.HeadHeightEverywhere = headEverywhere;
+            config.CutsceneCameraOffset = 0f;
             pi.SavePluginConfig(config);
         }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Apply the head height outside cutscenes too (affects target/nameplate placement)");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Reset cutscene camera height");
 
         ImGui.BeginDisabled(config.SelectedModelId <= 0);
         if (ImGui.Button("Apply", new Vector2(100, 0)))

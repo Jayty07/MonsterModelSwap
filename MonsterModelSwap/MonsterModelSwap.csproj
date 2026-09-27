@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.4.1.0</Version>
+    <Version>0.4.2.0</Version>
     <Description>Swap the local player's model to any monster/NPC ModelChara and keep it applied across zoning and cutscenes.</Description>
     <PackageProjectUrl>https://github.com/Jayty07/MonsterModelSwap</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

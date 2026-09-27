@@ -24,9 +24,8 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Max zoom-out is never scaled below this multiple of the game's normal max distance.</summary>
     public float CameraMaxZoomFloor { get; set; } = 1f;
 
-    /// <summary>Head/eye height (metres) written to the actor while in cutscenes; 0 = leave the game's value.</summary>
-    public float HeadHeight { get; set; }
-    public bool HeadHeightEverywhere { get; set; }
+    /// <summary>Vertical shift (world units) applied to cutscene/dialogue cameras. 0 = off.</summary>
+    public float CutsceneCameraOffset { get; set; }
 
     /// <summary>When true the plugin keeps re-applying the selected model every frame.</summary>
     public bool Persist { get; set; } = true;

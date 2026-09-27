@@ -121,16 +121,16 @@ public sealed class Plugin : IDalamudPlugin
                 swap.Revert();
                 break;
 
-            case "headheight":
+            case "cutcam":
                 if (parts.Length > 1 && float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
-                        System.Globalization.CultureInfo.InvariantCulture, out var hh))
+                        System.Globalization.CultureInfo.InvariantCulture, out var cc))
                 {
-                    config.HeadHeight = System.Math.Clamp(hh, 0f, 10f);
+                    config.CutsceneCameraOffset = System.Math.Clamp(cc, -5f, 10f);
                     PluginInterface.SavePluginConfig(config);
                 }
                 else
                 {
-                    Log.Warning($"Usage: /mms headheight <metres, 0 = auto>. Game's current value: {swap.CurrentHeadHeight:F2}");
+                    Log.Warning("Usage: /mms cutcam <world units, 0 = off>");
                 }
                 break;
 

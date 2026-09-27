@@ -222,6 +222,8 @@ public sealed unsafe class ModelSwapService : IDisposable
 
         camera.ExtraHeight = config.CameraHeightOffset;
         camera.MaxZoomFloor = config.CameraMaxZoomFloor;
+        camera.CutsceneOffset = config.CutsceneCameraOffset;
+        camera.CutsceneActive = InCutscene;
         camera.Tick();
 
         if (!Active) return;
@@ -331,11 +333,6 @@ public sealed unsafe class ModelSwapService : IDisposable
     {
         var objScale = TargetObjectScale;
 
-        if (!reverting && config.HeadHeight > 0f
-            && (config.HeadHeightEverywhere || InCutscene)
-            && Math.Abs(chara->GameObject.Height - config.HeadHeight) > 0.0005f)
-            chara->GameObject.Height = config.HeadHeight;
-
         if (Math.Abs(chara->GameObject.Scale - objScale) > 0.0005f)
             chara->GameObject.Scale = objScale;
 
@@ -387,16 +384,6 @@ public sealed unsafe class ModelSwapService : IDisposable
         || condition[ConditionFlag.WatchingCutscene78]
         || condition[ConditionFlag.OccupiedInEvent]
         || condition[ConditionFlag.OccupiedInQuestEvent];
-
-    /// <summary>The game's current head/eye height for the local actor (what cutscene cameras aim at).</summary>
-    public float? CurrentHeadHeight
-    {
-        get
-        {
-            var chara = GetLocalCharacter();
-            return chara is null ? null : chara->GameObject.Height;
-        }
-    }
 
     private Character* GetLocalCharacter()
     {
