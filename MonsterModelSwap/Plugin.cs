@@ -35,7 +35,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         database = new ModelDatabase(PluginInterface, DataManager, Log);
-        swap = new ModelSwapService(Framework, ClientState, Condition, ObjectTable, Log, config, new CameraScaleService(Log, ObjectTable, GameInterop));
+        swap = new ModelSwapService(Framework, ClientState, Condition, ObjectTable, Log, config, new CameraScaleService(Log, ObjectTable, GameInterop), new SkeletonService(Log, GameInterop));
         anim = new AnimationService(DataManager, KeyState, Log, config, swap, database);
         anim.BindsChanged += SaveConfig;
         mainWindow = new MainWindow(PluginInterface, config, database, swap, anim);
@@ -43,7 +43,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open the Monster Model Swap window. /mms apply <id> | revert | persist [on|off] | height <x> | camoffset <y> | anim <timeline id> | animloop <id|0> | animstop | camdebug",
+            HelpMessage = "Open the Monster Model Swap window. /mms apply <id> | revert | persist [on|off] | height <x> | camoffset <y> | anim <timeline id> | animloop <id|0> | animstop | camdebug | bones | bonedebug | focusbone <name|auto>",
         });
 
         Framework.Update += OnFrameworkUpdate;
@@ -168,6 +168,30 @@ public sealed class Plugin : IDalamudPlugin
 
             case "camdebug":
                 Log.Information("[camdebug] {Info}", swap.CameraDebugInfo());
+                break;
+
+            case "bonedebug":
+                Log.Information("[bonedebug] {Info}", swap.SkeletonDebugInfo());
+                break;
+
+            case "bones":
+                Log.Information("[bones] focus={Focus} attach=[{Attach}]", swap.ResolvedFocusBone() ?? "(none)", string.Join(", ", swap.AttachBoneNames()));
+                Log.Information("[bones] skeleton=[{Bones}]", string.Join(", ", swap.BoneNames()));
+                break;
+
+            case "focusbone":
+                if (parts.Length > 1 && swap.TargetModelId != 0)
+                {
+                    if (string.Equals(parts[1], "auto", System.StringComparison.OrdinalIgnoreCase))
+                        config.FocusBones.Remove(swap.TargetModelId);
+                    else
+                        config.FocusBones[swap.TargetModelId] = parts[1];
+                    PluginInterface.SavePluginConfig(config);
+                }
+                else
+                {
+                    Log.Warning("Usage: /mms focusbone <bone name | auto> (a model must be applied)");
+                }
                 break;
 
             case "camoffset":

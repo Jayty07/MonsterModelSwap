@@ -63,7 +63,21 @@ monster's **own skeleton, animations, VFX and scale**. You walk, idle and emote 
 | `/mms animloop <id\|0>` | Loop a row as the idle replacement (0 clears) |
 | `/mms animstop` | Clear loop and return to idle |
 | `/mms camdebug` | Log camera hook diagnostics |
+| `/mms bones` | Log the current monster skeleton's bone names and attach-point table |
+| `/mms bonedebug` | Log which attach-bone indices the game requested on your actor and which were redirected |
+| `/mms focusbone <name\|auto>` | Pick the bone that redirected head lookups resolve to (saved per model) |
 | `/mms persist [on\|off]` | Toggle the persistence loop |
+
+### Cutscene focus bone
+
+Cutscene / dialogue cameras and other systems locate points on an actor through the draw object's
+attach-bone virtuals (`HasAttachBone`, `GetAttachBoneWorldLocation`, `GetAttachBoneWorldTransform`),
+indexed by the human skeleton's attach-point table. A monster skeleton has no such entries, so the
+lookup fails and the game falls back to the model origin — the floor. The plugin hooks those three
+virtuals on the swapped draw object's vtable and, for the local player's actors only, answers failed
+lookups with a real bone of the monster skeleton (its head, auto-picked, or one you choose in the
+"Focus bone" dropdown). On by default, cutscene-only by default; "Redirect all attach lookups" widens it
+to every attach index if a model still frames the floor.
 
 ## How the swap works
 

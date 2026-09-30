@@ -28,6 +28,7 @@ public sealed unsafe class ModelSwapService : IDisposable
     private readonly IPluginLog log;
     private readonly Configuration config;
     private readonly CameraScaleService camera;
+    private readonly SkeletonService skeleton;
 
     private readonly Dictionary<nint, int> redrawCooldown = new();
     private readonly List<nint> cooldownExpired = new();
@@ -41,9 +42,11 @@ public sealed unsafe class ModelSwapService : IDisposable
         IObjectTable objects,
         IPluginLog log,
         Configuration config,
-        CameraScaleService camera)
+        CameraScaleService camera,
+        SkeletonService skeleton)
     {
         this.camera = camera;
+        this.skeleton = skeleton;
         this.framework = framework;
         this.clientState = clientState;
         this.condition = condition;
@@ -64,6 +67,7 @@ public sealed unsafe class ModelSwapService : IDisposable
         clientState.Login -= OnLogin;
         condition.ConditionChange -= OnConditionChange;
         camera.Dispose();
+        skeleton.Dispose();
     }
 
     /// <summary>True while a swap is in effect and the persistence loop should run.</summary>
@@ -76,6 +80,21 @@ public sealed unsafe class ModelSwapService : IDisposable
     public float TargetHeight { get; private set; } = 1.0f;
 
     public string CameraDebugInfo() => camera.DebugInfo();
+    public string SkeletonDebugInfo() => skeleton.DebugInfo();
+
+    /// <summary>Draw object of the main local actor, or 0.</summary>
+    public nint LocalDrawObject
+    {
+        get
+        {
+            var chara = GetLocalCharacter();
+            return chara is null ? nint.Zero : (nint)chara->GameObject.DrawObject;
+        }
+    }
+
+    public string[] BoneNames() => skeleton.BoneNames(LocalDrawObject);
+    public string[] AttachBoneNames() => skeleton.AttachBoneNames(LocalDrawObject);
+    public string? ResolvedFocusBone() => skeleton.ResolvedFocusBone(LocalDrawObject);
 
     /// <summary>Snapshot of the actor before the very first apply; used for a clean revert.</summary>
     public int? OriginalModelId { get; private set; }
@@ -237,6 +256,14 @@ public sealed unsafe class ModelSwapService : IDisposable
         }
         camera.Tick();
 
+        skeleton.Enabled = config.FocusBoneEnabled && Active && TargetModelId != 0;
+        skeleton.CutsceneOnly = config.FocusBoneCutsceneOnly;
+        skeleton.CutsceneActive = InCutscene;
+        skeleton.RedirectAll = config.FocusBoneRedirectAll;
+        skeleton.FocusOffsetY = config.FocusBoneOffsetY;
+        skeleton.FocusBone = config.FocusBones.TryGetValue(TargetModelId, out var bone) ? bone : string.Empty;
+        skeleton.SetLocalDrawObjects(Active ? LocalDrawObjects() : Array.Empty<nint>());
+
         if (!Active) return;
 
         if (config.ScaleCamera) camera.Update(TargetHeight);
@@ -384,6 +411,16 @@ public sealed unsafe class ModelSwapService : IDisposable
             if (!HasDrawObject(pc.Address)) continue;
             yield return pc.Address;
         }
+    }
+
+    private readonly List<nint> localDrawObjects = new();
+
+    private List<nint> LocalDrawObjects()
+    {
+        localDrawObjects.Clear();
+        foreach (var addr in LocalCharacterAddresses())
+            localDrawObjects.Add((nint)((Character*)addr)->GameObject.DrawObject);
+        return localDrawObjects;
     }
 
     private static bool HasDrawObject(nint addr) =>

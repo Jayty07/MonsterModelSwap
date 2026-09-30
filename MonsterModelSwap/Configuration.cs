@@ -31,6 +31,21 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Shift only shots whose look-at point is below feet + this many units (aimed at the floor).</summary>
     public float CutsceneCameraLowAim { get; set; } = 1f;
 
+    /// <summary>Answer failed head/attach-bone lookups on the swapped actor with a bone of the monster skeleton.</summary>
+    public bool FocusBoneEnabled { get; set; } = true;
+
+    /// <summary>Only redirect while a cutscene/dialogue is active.</summary>
+    public bool FocusBoneCutsceneOnly { get; set; } = true;
+
+    /// <summary>Redirect every attach-bone lookup on the swapped actor, not just the ones the game reports missing.</summary>
+    public bool FocusBoneRedirectAll { get; set; }
+
+    /// <summary>Per-model focus bone name (ModelChara id -> havok bone name). Missing = auto-pick head-like bone.</summary>
+    public Dictionary<int, string> FocusBones { get; set; } = new();
+
+    /// <summary>Vertical offset (model units) added to the focus bone position.</summary>
+    public float FocusBoneOffsetY { get; set; }
+
     /// <summary>When true the plugin keeps re-applying the selected model every frame.</summary>
     public bool Persist { get; set; } = true;
 

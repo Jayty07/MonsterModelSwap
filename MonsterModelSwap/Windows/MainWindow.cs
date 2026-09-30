@@ -240,6 +240,83 @@ public sealed class MainWindow : Window
             : $"Local player actor model: #{current}  scale {swap.CurrentHeight:0.00}");
     }
 
+    private string boneSearch = string.Empty;
+
+    private void DrawFocusBone()
+    {
+        var enabled = config.FocusBoneEnabled;
+        if (ImGui.Checkbox("Cutscene focus bone (redirect head lookups to the monster skeleton)", ref enabled))
+        {
+            config.FocusBoneEnabled = enabled;
+            pi.SavePluginConfig(config);
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Cutscene/dialogue cameras look up the human head attach bone on your actor. Monster skeletons\ndon't have it, so the game falls back to the floor. With this on, those failed lookups are\nanswered with a real bone of the monster skeleton (its head by default) for your actor only.");
+        if (!enabled) return;
+
+        ImGui.Indent();
+        var cutOnly = config.FocusBoneCutsceneOnly;
+        if (ImGui.Checkbox("Only during cutscenes / dialogue", ref cutOnly))
+        {
+            config.FocusBoneCutsceneOnly = cutOnly;
+            pi.SavePluginConfig(config);
+        }
+        ImGui.SameLine();
+        var all = config.FocusBoneRedirectAll;
+        if (ImGui.Checkbox("Redirect all attach lookups", ref all))
+        {
+            config.FocusBoneRedirectAll = all;
+            pi.SavePluginConfig(config);
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Off: only lookups the game reports as missing on the monster skeleton are redirected (recommended).\nOn: every attach-point lookup on your actor goes to the focus bone. Try this if cutscenes still aim at the floor.");
+
+        ImGui.SetNextItemWidth(200);
+        var offY = config.FocusBoneOffsetY;
+        if (ImGui.SliderFloat("Focus offset (up/down)", ref offY, -2f, 2f, "%.2f"))
+        {
+            config.FocusBoneOffsetY = Math.Clamp(offY, -2f, 2f);
+            pi.SavePluginConfig(config);
+        }
+
+        var modelId = swap.TargetModelId;
+        var bones = swap.Active ? swap.BoneNames() : Array.Empty<string>();
+        config.FocusBones.TryGetValue(modelId, out var chosen);
+        var resolved = swap.Active ? swap.ResolvedFocusBone() : null;
+        var label = string.IsNullOrEmpty(chosen)
+            ? $"Auto{(resolved is null ? string.Empty : $" ({resolved})")}"
+            : chosen;
+
+        ImGui.SetNextItemWidth(260);
+        ImGui.BeginDisabled(!swap.Active || modelId == 0);
+        if (ImGui.BeginCombo("Focus bone", label))
+        {
+            ImGui.SetNextItemWidth(-1);
+            ImGui.InputTextWithHint("##bonesearch", "filter", ref boneSearch, 64);
+            if (ImGui.Selectable("Auto (head-like bone)", string.IsNullOrEmpty(chosen)))
+            {
+                config.FocusBones.Remove(modelId);
+                pi.SavePluginConfig(config);
+            }
+            foreach (var b in bones)
+            {
+                if (boneSearch.Length > 0 && !b.Contains(boneSearch, StringComparison.OrdinalIgnoreCase)) continue;
+                if (ImGui.Selectable(b, string.Equals(b, chosen, StringComparison.OrdinalIgnoreCase)))
+                {
+                    config.FocusBones[modelId] = b;
+                    pi.SavePluginConfig(config);
+                }
+            }
+            ImGui.EndCombo();
+        }
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(swap.Active
+                ? $"{bones.Length} bones on the current skeleton. Saved per model. /mms bones lists them in /xllog."
+                : "Apply a model first to list its bones.");
+        ImGui.Unindent();
+    }
+
     private void DrawControls()
     {
         var selected = db.Get(config.SelectedModelId);
@@ -350,6 +427,8 @@ public sealed class MainWindow : Window
                 ImGui.SetTooltip("Only shots whose focus point is below this height are shifted (the ones framing the floor).\nRaise to 5 to shift every shot near you.");
             ImGui.Unindent();
         }
+
+        DrawFocusBone();
 
         ImGui.BeginDisabled(config.SelectedModelId <= 0);
         if (ImGui.Button("Apply", new Vector2(100, 0)))
